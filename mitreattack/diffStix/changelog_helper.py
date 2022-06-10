@@ -13,6 +13,7 @@ from dateutil import parser as dateparser
 from loguru import logger
 from stix2 import Filter, MemoryStore, TAXIICollectionSource
 from taxii2client.v20 import Collection
+from nltk.tokenize import word_tokenize
 from tqdm import tqdm
 
 # helper maps
@@ -491,6 +492,10 @@ class DiffStix(object):
                         if new_version > old_version:
                             # an update has occurred to this object
                             changes.add(key)
+                            old_des = old["id_to_obj"][key]["description"]
+                            new_des = new["id_to_obj"][key]["description"]
+                            if old_des != new_des:
+                                changes.add(key)
                         else:
                             # check for minor change; modification date increased but not version
                             old_date = dateparser.parse(
@@ -503,6 +508,15 @@ class DiffStix(object):
                                 minor_changes.add(key)
                             else:
                                 unchanged.add(key)
+                            old_des = old["id_to_obj"][key]["description"]
+                            old_des_toks = word_tokenize(old_des)
+                            new_des = new["id_to_obj"][key]["description"]
+                            new_des_toks = word_tokenize(new_des)
+                            if old_des != new_des:
+                                minor_changes.add(key)
+                                print(key)
+                                print("\n")
+
 
                 # Add contributions from additions
                 for key in additions:
