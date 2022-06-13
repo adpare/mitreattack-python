@@ -6,6 +6,7 @@ from itertools import chain
 from pathlib import Path
 from typing import List
 
+import difflib
 import markdown
 import requests
 import urllib3
@@ -15,7 +16,14 @@ from stix2 import Filter, MemoryStore, TAXIICollectionSource
 from taxii2client.v20 import Collection
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm
+from os.path import exists
 
+
+if exists("temp.txt"):
+	open("temp.txt","w").close()
+	f1 = open("temp.txt","a")
+	f1.write("\n### Minor Description Changes\n")
+f2 = open("output1.html","w")
 # helper maps
 domainToDomainLabel = {"enterprise-attack": "Enterprise", "mobile-attack": "Mobile", "ics-attack": "ICS"}
 domainToTaxiiCollectionId = {
@@ -509,13 +517,55 @@ class DiffStix(object):
                             else:
                                 unchanged.add(key)
                             old_des = old["id_to_obj"][key]["description"]
+                            old_des = old_des.replace('\n',' ')
+                            old_lines = old_des.splitlines()
                             old_des_toks = word_tokenize(old_des)
+                            oldt = ' '.join(old_des_toks)
                             new_des = new["id_to_obj"][key]["description"]
+                            new_des = new_des.replace('\n',' ')
+                            new_lines = new_des.splitlines()
                             new_des_toks = word_tokenize(new_des)
-                            if old_des != new_des:
+                            newt = ' '.join(new_des_toks)
+                            df = [x for x in old_lines if x not in new_lines]
+                            df1 = [x for x in new_lines if x not in old_lines]
+                            if df != [] or df1 != []:
                                 minor_changes.add(key)
-                                print(key)
-                                print("\n")
+                                delta = difflib.HtmlDiff(wrapcolumn=60,tabsize=8).make_file(old_lines, new_lines, "old_des", "new_des")
+                                f2.write(old["id_to_obj"][key]["external_references"][0]["external_id"])
+                                f2.write(delta)
+                                f1.write(key)
+                                f1.write("\n")
+                                for item in df:
+                                	f1.write(item)
+                                	f1.write(',')
+                                f1.write("\n")
+                                for item in df1:
+                                	f1.write(item)
+                                	f1.write(',')
+                                f1.write("\n\n")
+
+                            #if len(old_des_toks) != len(new_des_toks):
+                             #   minor_changes.add(key)
+                                #print(key)
+                                #print("\n")
+                                #print(old_des)
+                                #print("\n")
+                                #print(new_des)
+                                #print("\n\n")
+                            #else:
+                             #   for i in range(len(old_des_toks)):
+                              #      if old_des_toks[i] != new_des_toks[i]:
+                               #         minor_changes.add(key)
+                                 #       print(key)
+                                  #      print("\n")
+                                   #     print(old_des)
+                                    #    print("\n")
+                                     #   print(new_des)
+                                      #  print("\n\n")
+                            #if old_des != new_des:
+                             #   minor_changes.add(key)
+                              #  print(key)
+                               # print("\n")
 
 
                 # Add contributions from additions
