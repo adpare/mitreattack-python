@@ -23,7 +23,13 @@ if exists("temp.txt"):
 	open("temp.txt","w").close()
 	f1 = open("temp.txt","a")
 	f1.write("\n### Minor Description Changes\n")
+
+if exists("output1.html"):
+	open("output1.html","w").close()
 f2 = open("output1.html","w")
+f2.write("\n<h1>Differences between ATT&CK v10.1 and v11.0</h1>\n")
+#f2 = open("output1.html","w")
+legend_exists = False
 # helper maps
 domainToDomainLabel = {"enterprise-attack": "Enterprise", "mobile-attack": "Mobile", "ics-attack": "ICS"}
 domainToTaxiiCollectionId = {
@@ -528,10 +534,39 @@ class DiffStix(object):
                             newt = ' '.join(new_des_toks)
                             df = [x for x in old_lines if x not in new_lines]
                             df1 = [x for x in new_lines if x not in old_lines]
+                            #html_diff = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
+                            
                             if df != [] or df1 != []:
                                 minor_changes.add(key)
-                                delta = difflib.HtmlDiff(wrapcolumn=60,tabsize=8).make_file(old_lines, new_lines, "old_des", "new_des")
-                                f2.write(old["id_to_obj"][key]["external_references"][0]["external_id"])
+                                html_diff = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
+                                global legend_exists
+                                if legend_exists:
+                                	html_diff._legend = """
+                                	"""
+                                else:
+                                	html_diff._legend = """
+                                	<table class="diff" summary="Legends">
+                                	<tr> <td> <table border="" summary="Colors">
+                                	<tr><th> Colors </th> </tr>
+                                	<tr><td class="diff_add">&nbsp;Added&nbsp;</td></tr>
+                                	<tr><td class="diff_chg">Changed</td> </tr>
+                                	<tr><td class="diff_sub">Deleted</td> </tr>
+                                	</table></td>
+                                	<td> <table border="" summary="Links">
+                                	<tr><th colspan="2"> Links </th> </tr>
+                                	<tr><td>(f)irst change</td> </tr>
+                                	<tr><td>(n)ext change</td> </tr>
+                                	<tr><td>(t)op</td> </tr>
+                                	</table></td> </tr>
+                                	</table>"""
+                                legend_exists = True
+                                delta = html_diff.make_file(old_lines, new_lines, "old_des", "new_des")
+                                f2.write("<h2>")
+                                try:
+                                    f2.write(old["id_to_obj"][key]["external_references"][0]["external_id"])
+                                except:
+                                    hello = True
+                                f2.write("</h2>")
                                 f2.write(delta)
                                 f1.write(key)
                                 f1.write("\n")
