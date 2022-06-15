@@ -30,6 +30,11 @@ f2 = open("output1.html","w")
 f2.write("\n<h1>Differences between ATT&CK v10.1 and v11.0</h1>\n")
 #f2 = open("output1.html","w")
 legend_exists = False
+add_before = False
+versions = dict()
+descriptions = dict()
+additions_obj = dict()
+obj_types = ["attack-pattern", "course-of-action", "intrusion-set", "malware", "tool", "x-mitre-data-component", "x-mitre-data-source", "x-mitre-matrix", "x-mitre-tactic"]
 # helper maps
 domainToDomainLabel = {"enterprise-attack": "Enterprise", "mobile-attack": "Mobile", "ics-attack": "ICS"}
 domainToTaxiiCollectionId = {
@@ -506,6 +511,21 @@ class DiffStix(object):
                         if new_version > old_version:
                             # an update has occurred to this object
                             changes.add(key)
+                            old_version_temp = old["id_to_obj"][key]["x_mitre_version"]
+                            new_version_temp = new["id_to_obj"][key]["x_mitre_version"]
+                            html_diff_version = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
+                            html_diff_version._legend = ""
+                            delta = html_diff_version.make_file(old_version_temp.splitlines(), new_version_temp.splitlines(), "Old Version Number", "New Version Number")
+
+                            global count
+                            try:
+                            	versions[key] = {}
+                            	versions[key]["name"] = new["id_to_obj"][key]["name"]
+                            	versions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0]["external_id"]
+                            except:
+                            	hello = True
+                            versions[key]["delta"] = delta
+                            #f2.write(delta)
                             old_des = old["id_to_obj"][key]["description"]
                             new_des = new["id_to_obj"][key]["description"]
                             if old_des != new_des:
@@ -525,16 +545,11 @@ class DiffStix(object):
                             old_des = old["id_to_obj"][key]["description"]
                             old_des = old_des.replace('\n',' ')
                             old_lines = old_des.splitlines()
-                            old_des_toks = word_tokenize(old_des)
-                            oldt = ' '.join(old_des_toks)
                             new_des = new["id_to_obj"][key]["description"]
                             new_des = new_des.replace('\n',' ')
                             new_lines = new_des.splitlines()
-                            new_des_toks = word_tokenize(new_des)
-                            newt = ' '.join(new_des_toks)
                             df = [x for x in old_lines if x not in new_lines]
                             df1 = [x for x in new_lines if x not in old_lines]
-                            #html_diff = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
                             
                             if df != [] or df1 != []:
                                 minor_changes.add(key)
@@ -543,70 +558,31 @@ class DiffStix(object):
                                 if legend_exists:
                                 	html_diff._legend = """
                                 	"""
-                                else:
-                                	html_diff._legend = """
-                                	<table class="diff" summary="Legends">
-                                	<tr> <td> <table border="" summary="Colors">
-                                	<tr><th> Colors </th> </tr>
-                                	<tr><td class="diff_add">&nbsp;Added&nbsp;</td></tr>
-                                	<tr><td class="diff_chg">Changed</td> </tr>
-                                	<tr><td class="diff_sub">Deleted</td> </tr>
-                                	</table></td>
-                                	<td> <table border="" summary="Links">
-                                	<tr><th colspan="2"> Links </th> </tr>
-                                	<tr><td>(f)irst change</td> </tr>
-                                	<tr><td>(n)ext change</td> </tr>
-                                	<tr><td>(t)op</td> </tr>
-                                	</table></td> </tr>
-                                	</table>"""
                                 legend_exists = True
-                                delta = html_diff.make_file(old_lines, new_lines, "old_des", "new_des")
-                                f2.write("<h2>")
+                                delta = html_diff.make_file(old_lines, new_lines, "Old Description", "New Description")
                                 try:
-                                    f2.write(old["id_to_obj"][key]["external_references"][0]["external_id"])
+                                    descriptions[key] = {}
+                                    descriptions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0]["external_id"]
+                                    descriptions[key]["name"] = new["id_to_obj"][key]["name"]
                                 except:
                                     hello = True
-                                f2.write("</h2>")
-                                f2.write(delta)
-                                f1.write(key)
-                                f1.write("\n")
-                                for item in df:
-                                	f1.write(item)
-                                	f1.write(',')
-                                f1.write("\n")
-                                for item in df1:
-                                	f1.write(item)
-                                	f1.write(',')
-                                f1.write("\n\n")
-
-                            #if len(old_des_toks) != len(new_des_toks):
-                             #   minor_changes.add(key)
-                                #print(key)
-                                #print("\n")
-                                #print(old_des)
-                                #print("\n")
-                                #print(new_des)
-                                #print("\n\n")
-                            #else:
-                             #   for i in range(len(old_des_toks)):
-                              #      if old_des_toks[i] != new_des_toks[i]:
-                               #         minor_changes.add(key)
-                                 #       print(key)
-                                  #      print("\n")
-                                   #     print(old_des)
-                                    #    print("\n")
-                                     #   print(new_des)
-                                      #  print("\n\n")
-                            #if old_des != new_des:
-                             #   minor_changes.add(key)
-                              #  print(key)
-                               # print("\n")
-
+                                descriptions[key]["delta"] = delta
 
                 # Add contributions from additions
+                global add_before
+                if len(additions) != 0 and add_before == False:
+                	for add_obj in obj_types:
+                		additions_obj[add_obj] = {}
+                		additions_obj[add_obj]["attack_id"] = []
+                		additions_obj[add_obj]["name"] = []
+                	add_before = True
                 for key in additions:
                     update_contributors(None, new["id_to_obj"][key])
-
+                    key_string = key.split("--")
+                    for add_obj in obj_types:
+                    	if key_string[0] == add_obj:
+                    		additions_obj[add_obj]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
+                    		additions_obj[add_obj]["name"].append(new["id_to_obj"][key]["name"])                 	                    	                    	                    	
                 # set data
                 if obj_type not in self.data:
                     self.data[obj_type] = {}
@@ -641,6 +617,54 @@ class DiffStix(object):
 
                 logger.debug(f"Loaded:  [{domain:17}]/{obj_type}")
                 pbar.update(1)
+        f2.write("---------------------------------------------------------------------------------------------------------------------------------------------------")
+        f2.write("<h2>Description Changes</h2>")
+        
+        for key in descriptions:
+        	f2.write("<h3>")
+        	try:
+        		f2.write(descriptions[key]["attack_id"])
+        		f2.write(" - ")
+        		f2.write(descriptions[key]["name"])
+        	except:
+        		hi = False
+        	f2.write("</h3>")
+        	f2.write(descriptions[key]["delta"])
+        f2.write("--------------------------------------------------------------------------------------------------------------------------------------------------")
+        f2.write("<h2>Version Number Changes</h2>")     
+        for key in versions:
+        	f2.write("<h3>")
+        	f2.write(versions[key]["attack_id"])
+        	f2.write(" - ")
+        	f2.write(versions[key]["name"])
+        	f2.write("</h3>")
+        	f2.write(versions[key]["delta"])
+        f2.write("--------------------------------------------------------------------------------------------------------------------------------------------------")
+        if len(additions) != 0 or add_before == True:
+        	f2.write("<h2>New Objects</h2>")     
+        	for key in additions_obj:
+        		for add_obj in obj_types:
+                    		if key == add_obj and len(additions_obj[add_obj]["name"]) > 0:
+                    			f2.write("<h3>")
+                    			f2.write(add_obj)
+                    			f2.write("</h3>")
+                    			f2.write("<style>table, th, td { border: 1px solid black;}</style>")
+                    			f2.write("<table>")
+                    			f2.write("<tr>")
+                    			f2.write("<th>Attack ID</th>")
+                    			f2.write("<th>Attack Name</th>")
+                    			f2.write("</tr>")
+                    			for i in range(len(additions_obj[add_obj]["name"])):
+                    				f2.write("<tr>")
+                    				f2.write("<td>")
+                    				f2.write(additions_obj[add_obj]["attack_id"][i])
+                    				f2.write("</td>")
+                    				f2.write("<td>")
+                    				f2.write(additions_obj[add_obj]["name"][i])
+                    				f2.write("</td>") 
+                    				f2.write("</tr>")
+                    			f2.write("</table>")
+                    						                    		
         pbar.close()
 
     def get_md_key(self):
