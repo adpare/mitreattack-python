@@ -1,4 +1,5 @@
 import argparse
+from ast import keyword
 import datetime
 import json
 import os
@@ -34,13 +35,16 @@ add_before = False
 dep_before = False
 rev_before = False
 del_before = False
+count = 0
 versions = dict()
 descriptions = dict()
 additions_obj = dict()
 deprecations_obj = dict()
 revocations_obj = dict()
 deletions_obj = dict()
+diff_key = set()
 obj_types = ["attack-pattern", "course-of-action", "intrusion-set", "malware", "tool", "x-mitre-data-component", "x-mitre-data-source", "x-mitre-matrix", "x-mitre-tactic"]
+revoked_by_keys = []
 # helper maps
 domainToDomainLabel = {"enterprise-attack": "Enterprise", "mobile-attack": "Mobile", "ics-attack": "ICS"}
 domainToTaxiiCollectionId = {
@@ -473,8 +477,9 @@ class DiffStix(object):
                             new["id_to_obj"][key]["revoked_by"] = new["id_to_obj"][
                                 revoked_by_key
                             ]
-
+			 
                             revocations.add(key)
+                            revoked_by_keys.append(revoked_by_key)
                         # else it was already revoked, and not a change; do nothing with it
 
                     # find deprecated objects
@@ -517,6 +522,7 @@ class DiffStix(object):
                         if new_version > old_version:
                             # an update has occurred to this object
                             changes.add(key)
+                            diff_key.add(key)
                             old_version_temp = old["id_to_obj"][key]["x_mitre_version"]
                             new_version_temp = new["id_to_obj"][key]["x_mitre_version"]
                             html_diff_version = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
@@ -548,51 +554,53 @@ class DiffStix(object):
                                 minor_changes.add(key)
                             else:
                                 unchanged.add(key)
-                            old_des = old["id_to_obj"][key]["description"]
-                            old_des = old_des.replace('\n',' ')
-                            old_lines = old_des.splitlines()
-                            new_des = new["id_to_obj"][key]["description"]
-                            new_des = new_des.replace('\n',' ')
-                            new_lines = new_des.splitlines()
-                            df = [x for x in old_lines if x not in new_lines]
-                            df1 = [x for x in new_lines if x not in old_lines]
+                                    
+                        old_des = old["id_to_obj"][key]["description"]
+                        old_des = old_des.replace('\n',' ')
+                        old_lines = old_des.splitlines()
+                        new_des = new["id_to_obj"][key]["description"]
+                        new_des = new_des.replace('\n',' ')
+                        new_lines = new_des.splitlines()
+                        df = [x for x in old_lines if x not in new_lines]
+                        df1 = [x for x in new_lines if x not in old_lines]
                             
-                            if df != [] or df1 != []:
-                                minor_changes.add(key)
-                                html_diff = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
-                                global legend_exists
-                                if legend_exists:
-                                	html_diff._legend = """
-                                	"""
-                                legend_exists = True
-                                delta = html_diff.make_file(old_lines, new_lines, "Old Description", "New Description")
-                                try:
-                                    descriptions[key] = {}
-                                    descriptions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0]["external_id"]
-                                    descriptions[key]["name"] = new["id_to_obj"][key]["name"]
-                                except:
-                                    hello = True
-                                descriptions[key]["delta"] = delta
+                        if df != [] or df1 != []:
+                            minor_changes.add(key)
+                        
+                            html_diff = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
+                            global legend_exists
+                            if legend_exists:
+                                html_diff._legend = """
+                                """
+                            legend_exists = True
+                            delta = html_diff.make_file(old_lines, new_lines, "Old Description", "New Description")
+                            try:
+                                descriptions[key] = {}
+                                descriptions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0]["external_id"]
+                                descriptions[key]["name"] = new["id_to_obj"][key]["name"]
+                                diff_key.add(key)
+                            except:
+                                hello = True
+                            descriptions[key]["delta"] = delta
 
                 # Add contributions from additions
                 global add_before
                 global dep_before
                 global rev_before
                 global del_before
-                if len(additions) != 0 and add_before == False:
-                	for add_obj in obj_types:
-                		additions_obj[add_obj] = {}
-                		additions_obj[add_obj]["attack_id"] = []
-                		additions_obj[add_obj]["name"] = []
-                	add_before = True
+                for key in additions:
+                    additions_obj[key] = {} 
+                    additions_obj[key]["attack_id"] = [] 
+                    additions_obj[key]["name"] = []
+                    additions_obj[key]["obj_type"] = []
                 for key in additions:
                     update_contributors(None, new["id_to_obj"][key])
                     key_string = key.split("--")
-                    for add_obj in obj_types:
-                    	if key_string[0] == add_obj:
-                    		additions_obj[add_obj]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
-                    		additions_obj[add_obj]["name"].append(new["id_to_obj"][key]["name"]) 
-                    		
+                    diff_key.add(key)
+                    additions_obj[key]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
+                    additions_obj[key]["name"].append(new["id_to_obj"][key]["name"])
+                    additions_obj[key]["obj_type"].append(key_string[0])
+                    	
                     		
                 if len(deprecations) != 0 and dep_before == False:
                 	for add_obj in obj_types:
@@ -608,18 +616,23 @@ class DiffStix(object):
                     		deprecations_obj[add_obj]["name"].append(new["id_to_obj"][key]["name"])  
                     		
                     		
-                if len(revocations) != 0 and rev_before == False:
-                	for add_obj in obj_types:
-                		revocations_obj[add_obj] = {}
-                		revocations_obj[add_obj]["attack_id"] = []
-                		revocations_obj[add_obj]["name"] = []
-                	rev_before = True
                 for key in revocations:
+                	revocations_obj[key] = {}
+                	revocations_obj[key]["attack_id"] = []
+                	revocations_obj[key]["name"] = []
+                	revocations_obj[key]["obj_type"] = []
+                	revocations_obj[key]["revoked_by_id"] = []
+                	revocations_obj[key]["revoked_by_name"] = []
+                global count
+                for key in revocations:
+                    diff_key.add(key)
                     key_string = key.split("--")
-                    for add_obj in obj_types:
-                    	if key_string[0] == add_obj:
-                    		revocations_obj[add_obj]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
-                    		revocations_obj[add_obj]["name"].append(new["id_to_obj"][key]["name"]) 
+                    revocations_obj[key]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
+                    revocations_obj[key]["name"].append(new["id_to_obj"][key]["name"]) 
+                    revocations_obj[key]["obj_type"].append(key_string[0])
+                    revocations_obj[key]["revoked_by_id"].append(new["id_to_obj"][revoked_by_keys[count]]["external_references"][0]["external_id"])
+                    revocations_obj[key]["revoked_by_name"].append(new["id_to_obj"][revoked_by_keys[count]]["name"])
+                    count = count + 1
                     		
                     		
                 if len(deletions) != 0 and del_before == False:
@@ -633,8 +646,11 @@ class DiffStix(object):
                     	key_string = key.split("--")
                     	for add_obj in obj_types:
                     		if key_string[0] == add_obj:
-                    			deletions_obj[add_obj]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
-                    			deletions_obj[add_obj]["name"].append(new["id_to_obj"][key]["name"])              	                    	                    	                    	
+                    			try:
+                    				deletions_obj[add_obj]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
+                    				deletions_obj[add_obj]["name"].append(new["id_to_obj"][key]["name"])
+                    			except:
+                    				boo = False              	                    	                    	                    	
                 # set data
                 if obj_type not in self.data:
                     self.data[obj_type] = {}
@@ -671,54 +687,52 @@ class DiffStix(object):
 
                 logger.debug(f"Loaded:  [{domain:17}]/{obj_type}")
                 pbar.update(1)
-        f2.write("---------------------------------------------------------------------------------------------------------------------------------------------------")
-        f2.write("<h2>Description Changes</h2>")
         
-        for key in descriptions:
-        	f2.write("<h3>")
-        	try:
-        		f2.write(descriptions[key]["attack_id"])
-        		f2.write(" - ")
-        		f2.write(descriptions[key]["name"])
-        	except:
-        		hi = False
-        	f2.write("</h3>")
-        	f2.write(descriptions[key]["delta"])
-        f2.write("--------------------------------------------------------------------------------------------------------------------------------------------------")
-        f2.write("<h2>Version Number Changes</h2>")     
-        for key in versions:
-        	f2.write("<h3>")
-        	f2.write(versions[key]["attack_id"])
-        	f2.write(" - ")
-        	f2.write(versions[key]["name"])
-        	f2.write("</h3>")
-        	f2.write(versions[key]["delta"])
-        f2.write("--------------------------------------------------------------------------------------------------------------------------------------------------")
-        if len(additions) != 0 or add_before == True:
-        	f2.write("<h2>New Objects</h2>")     
-        	for key in additions_obj:
-        		for add_obj in obj_types:
-                    		if key == add_obj and len(additions_obj[add_obj]["name"]) > 0:
-                    			f2.write("<h3>")
-                    			f2.write(add_obj)
-                    			f2.write("</h3>")
-                    			f2.write("<style>table, th, td { border: 1px solid black;}</style>")
-                    			f2.write("<table>")
-                    			f2.write("<tr>")
-                    			f2.write("<th>Attack ID</th>")
-                    			f2.write("<th>Attack Name</th>")
-                    			f2.write("</tr>")
-                    			for i in range(len(additions_obj[add_obj]["name"])):
-                    				f2.write("<tr>")
-                    				f2.write("<td>")
-                    				f2.write(additions_obj[add_obj]["attack_id"][i])
-                    				f2.write("</td>")
-                    				f2.write("<td>")
-                    				f2.write(additions_obj[add_obj]["name"][i])
-                    				f2.write("</td>") 
-                    				f2.write("</tr>")
-                    			f2.write("</table>")
-        f2.write("--------------------------------------------------------------------------------------------------------------------------------------------------")
+        for key in diff_key:
+            f2.write("<hr>")
+            f2.write("<h1>")
+            try:
+                f2.write(descriptions[key]["attack_id"])
+                f2.write(" - ")
+                f2.write(descriptions[key]["name"])
+            except:
+                try:
+                    f2.write(versions[key]["attack_id"])
+                    f2.write(" - ")
+                    f2.write(versions[key]["name"])
+                except:
+                    try:
+                    	f2.write(additions_obj[key]["name"][0])
+                    	f2.write(" - ")
+                    	f2.write(additions_obj[key]["attack_id"][0])
+                    except:
+                    	f2.write(revocations_obj[key]["attack_id"][0])
+                    	f2.write(" - ")
+                    	f2.write(revocations_obj[key]["name"][0])
+            f2.write("</h1>")
+            if key in versions:
+                f2.write("<h2>Version Changes</h2>")
+                f2.write(versions[key]["delta"])
+            if key in descriptions:
+                f2.write("<h2>Description Changes</h2>")
+                f2.write(descriptions[key]["delta"])
+            if key in additions_obj:
+                for i in range(len(additions_obj[key]["obj_type"])):
+                    f2.write("<h2>New Object of type ")
+                    f2.write(additions_obj[key]["obj_type"][i]) 
+                    f2.write("</h2>")
+            if key in revocations_obj:
+                for i in range(len(revocations_obj[key]["obj_type"])):
+                    f2.write("<h2>Revoked Object of type ")
+                    f2.write(revocations_obj[key]["obj_type"][i]) 
+                    f2.write("<br>Revoked by ")
+                    f2.write(revocations_obj[key]["revoked_by_id"][i])
+                    f2.write(" - ")
+                    f2.write(revocations_obj[key]["revoked_by_name"][i])
+                    
+
+
+                
         if len(deprecations) != 0 or dep_before == True:
         	f2.write("<h2>Deprecated Objects</h2>")     
         	for key in deprecations_obj:
