@@ -43,6 +43,16 @@ f2.write("<tr><td>(f)irst change</td> </tr>")
 f2.write("<tr><td>(n)ext change</td> </tr>")
 f2.write("<tr><td>(t)op</td> </tr>")
 f2.write("</table></td> </tr>")
+f2.write("</table></td><br>")
+
+f2.write("<td> <table style=""float: left"" border="">")
+f2.write("<tr><th style=font-size:15px""><TT> Colors </th> <th style=font-size:15px> <TT> Objects </th></tr>")
+f2.write("<tr> <td style=""background-color:green;""></td> <td style=font-size:15px><TT> New Objects</td></tr>")
+f2.write("<tr> <td style=""background-color:blue;""></td> <td style=font-size:15px><TT> Revoked Objects</td></tr>")
+f2.write("<tr><td style=""background-color:purple;""></td><td style=font-size:15px><TT> Deprecated Objects</td>  </tr>")
+f2.write("<tr><td style=""background-color:red;""></td> <td style=font-size:15px><TT> Deleted Objects</td> </tr>")
+#f2.write("<tr><td>Deleted Objects</td></tr>")
+f2.write("</table></td> </tr>")
 f2.write("</table>")
 #f2 = open("output1.html","w")
 legend_exists = False
@@ -678,12 +688,13 @@ class DiffStix(object):
                 for key in deletions:
                     diff_key.add(key)
                     key_string = key.split("--")
-                    deletions_obj[key]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
-                    deletions_obj[key]["name"].append(new["id_to_obj"][key]["name"]) 
+                    deletions_obj[key]["attack_id"].append(old["id_to_obj"][key]["external_references"][0]["external_id"])
+                    deletions_obj[key]["name"].append(old["id_to_obj"][key]["name"]) 
                     deletions_obj[key]["obj_type"].append(key_string[0])
                     diff_key_info[key] = {}
                     diff_key_info[key]["name"] = deletions_obj[key]["name"]
-                    diff_key_info[key]["attack_id"] = deletions_obj[key]["attack_id"]                    		                    		              	                    	                    	                    	
+                    diff_key_info[key]["attack_id"] = deletions_obj[key]["attack_id"] 
+                    diff_key.add(key)                  		                    		              	                    	                    	                    	
                 # set data
                 if obj_type not in self.data:
                     self.data[obj_type] = {}
@@ -730,6 +741,7 @@ class DiffStix(object):
             	f2.write(diff_key_info[key]["name"])
             except:
             	f2.write(diff_key_info[key]["attack_id"][0])
+            	f2.write(" - ")
             	f2.write(diff_key_info[key]["name"][0])
             f2.write("</h1>")
             if key in versions:
@@ -740,27 +752,32 @@ class DiffStix(object):
                 f2.write(descriptions[key]["delta"])
             if key in additions_obj:
                 for i in range(len(additions_obj[key]["obj_type"])):
+                    f2.write("<font color=""green"">")
                     f2.write("<h2>New Object of type ")
                     f2.write(additions_obj[key]["obj_type"][i]) 
-                    f2.write("</h2>")
+                    f2.write("</h2></font>")
             if key in revocations_obj:
                 for i in range(len(revocations_obj[key]["obj_type"])):
+                    f2.write("<font color=""blue"">")
                     f2.write("<h2>Revoked Object of type ")
                     f2.write(revocations_obj[key]["obj_type"][i]) 
                     f2.write("<br>Revoked by ")
                     f2.write(revocations_obj[key]["revoked_by_id"][i])
                     f2.write(" - ")
                     f2.write(revocations_obj[key]["revoked_by_name"][i])
+                    f2.write("</h2></font>")
             if key in deprecations_obj:
                 for i in range(len(deprecations_obj[key]["obj_type"])):
+                    f2.write("<font color=""purple"">")
                     f2.write("<h2>Deprecated Object of type ")
                     f2.write(deprecations_obj[key]["obj_type"][i])
-                    f2.write("</h2>") 
+                    f2.write("</h2></font>") 
             if key in deletions_obj:
                 for i in range(len(deletions_obj[key]["obj_type"])):
+                    f2.write("<font color=""red"">")
                     f2.write("<h2>Deleted Object of type ")
                     f2.write(deletions_obj[key]["obj_type"][i])
-                    f2.write("</h2>")     						                    		
+                    f2.write("</h2></font>")     						                    		
         pbar.close()
 
     def get_md_key(self):
