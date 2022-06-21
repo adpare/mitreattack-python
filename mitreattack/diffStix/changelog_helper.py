@@ -19,48 +19,9 @@ from nltk.tokenize import word_tokenize
 from tqdm import tqdm
 from os.path import exists
 
-
-if exists("temp.txt"):
-	open("temp.txt","w").close()
-	f1 = open("temp.txt","a")
-	f1.write("\n### Minor Description Changes\n")
-
-if exists("output1.html"):
-	open("output1.html","w").close()
-f2 = open("output1.html","w")
-f2.write("\n<h1>Differences between ATT&CK v10.1 and v11.0</h1>\n")
-
-f2.write("<table class=""diff"" summary=""Legends"">")
-f2.write("<tr> <td> <table border="" summary=""Colors"">")
-f2.write("<tr><th> Colors </th> </tr>")
-f2.write("<tr><td class=""diff_add"">&nbsp;Added&nbsp;</td></tr>")
-f2.write("<tr><td class=""diff_chg"">Changed</td> </tr>")
-f2.write("<tr><td class=""diff_sub"">Deleted</td> </tr>")
-f2.write("</table></td>")
-f2.write("<td> <table border="" summary=""Links"">")
-f2.write("<tr><th colspan=""2""> Links </th> </tr>")
-f2.write("<tr><td>(f)irst change</td> </tr>")
-f2.write("<tr><td>(n)ext change</td> </tr>")
-f2.write("<tr><td>(t)op</td> </tr>")
-f2.write("</table></td> </tr>")
-f2.write("</table></td><br>")
-
-f2.write("<td> <table style=""float: left"" border="">")
-f2.write("<tr><th style=font-size:15px""><TT> Colors </th> <th style=font-size:15px> <TT> Objects </th></tr>")
-f2.write("<tr> <td style=""background-color:green;""></td> <td style=font-size:15px><TT> New Objects</td></tr>")
-f2.write("<tr> <td style=""background-color:blue;""></td> <td style=font-size:15px><TT> Revoked Objects</td></tr>")
-f2.write("<tr><td style=""background-color:purple;""></td><td style=font-size:15px><TT> Deprecated Objects</td>  </tr>")
-f2.write("<tr><td style=""background-color:red;""></td> <td style=font-size:15px><TT> Deleted Objects</td> </tr>")
-#f2.write("<tr><td>Deleted Objects</td></tr>")
-f2.write("</table></td> </tr>")
-f2.write("</table>")
-#f2 = open("output1.html","w")
 legend_exists = False
-add_before = False
-dep_before = False
-rev_before = False
-del_before = False
-count = 0
+output_file = False
+count_rev = 0
 versions = dict()
 descriptions = dict()
 additions_obj = dict()
@@ -71,6 +32,11 @@ diff_key = set()
 diff_key_info = {}
 obj_types = ["attack-pattern", "course-of-action", "intrusion-set", "malware", "tool", "x-mitre-data-component", "x-mitre-data-source", "x-mitre-matrix", "x-mitre-tactic"]
 revoked_by_keys = []
+
+if exists("output1.html"):
+	open("output1.html","w").close()
+f2 = open("output1.html","w")
+
 # helper maps
 domainToDomainLabel = {"enterprise-attack": "Enterprise", "mobile-attack": "Mobile", "ics-attack": "ICS"}
 domainToTaxiiCollectionId = {
@@ -547,6 +513,7 @@ class DiffStix(object):
                         # check for changes
                         if new_version > old_version:
                             # an update has occurred to this object
+                            ### This Section collects detailed information about the version changes
                             changes.add(key)
                             diff_key.add(key)
                             diff_key_info["key"] = key
@@ -556,7 +523,6 @@ class DiffStix(object):
                             html_diff_version._legend = ""
                             delta = html_diff_version.make_file(old_version_temp.splitlines(), new_version_temp.splitlines(), "Old Version Number", "New Version Number")
 
-                            global count
                             try:
                             	versions[key] = {}
                             	versions[key]["name"] = new["id_to_obj"][key]["name"]
@@ -565,13 +531,9 @@ class DiffStix(object):
                             	diff_key_info[key]["name"] = versions[key]["name"]
                             	diff_key_info[key]["attack_id"] = versions[key]["attack_id"]
                             except:
-                            	hello = True
+                            	temp_bool = True
                             versions[key]["delta"] = delta
                             #f2.write(delta)
-                            old_des = old["id_to_obj"][key]["description"]
-                            new_des = new["id_to_obj"][key]["description"]
-                            if old_des != new_des:
-                                changes.add(key)
                         else:
                             # check for minor change; modification date increased but not version
                             old_date = dateparser.parse(
@@ -584,7 +546,7 @@ class DiffStix(object):
                                 minor_changes.add(key)
                             else:
                                 unchanged.add(key)
-                                    
+                        ### This Section collects detailed information about the description changes       
                         old_des = old["id_to_obj"][key]["description"]
                         old_des = old_des.replace('\n',' ')
                         old_lines = old_des.splitlines()
@@ -615,14 +577,11 @@ class DiffStix(object):
                                 diff_key_info[key]["name"] = descriptions[key]["name"]
                                 diff_key_info[key]["attack_id"] = descriptions[key]["attack_id"]
                             except:
-                                hello = True
+                                temp_bool = True
                             descriptions[key]["delta"] = delta
 
                 # Add contributions from additions
-                global add_before
-                global dep_before
-                global rev_before
-                global del_before
+                ### This Section collects detailed information about the addition changes
                 for key in additions:
                     additions_obj[key] = {} 
                     additions_obj[key]["attack_id"] = [] 
@@ -639,7 +598,7 @@ class DiffStix(object):
                     diff_key_info[key]["name"] = additions_obj[key]["name"]
                     diff_key_info[key]["attack_id"] = additions_obj[key]["attack_id"]
                     	
-                    		
+                ### This Section collects detailed information about the deprecation changes   		
                 for key in deprecations:
                 	deprecations_obj[key] = {}
                 	deprecations_obj[key]["attack_id"] = []
@@ -656,7 +615,7 @@ class DiffStix(object):
                     diff_key_info[key]["name"] = deprecations_obj[key]["name"]
                     diff_key_info[key]["attack_id"] = deprecations_obj[key]["attack_id"]  
                     		
-                    		
+                ### This Section collects detailed information about the revocation changes   		
                 for key in revocations:
                 	revocations_obj[key] = {}
                 	revocations_obj[key]["attack_id"] = []
@@ -664,20 +623,21 @@ class DiffStix(object):
                 	revocations_obj[key]["obj_type"] = []
                 	revocations_obj[key]["revoked_by_id"] = []
                 	revocations_obj[key]["revoked_by_name"] = []
-                global count
+                global count_rev
                 for key in revocations:
                     diff_key.add(key)
                     key_string = key.split("--")
                     revocations_obj[key]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
                     revocations_obj[key]["name"].append(new["id_to_obj"][key]["name"]) 
                     revocations_obj[key]["obj_type"].append(key_string[0])
-                    revocations_obj[key]["revoked_by_id"].append(new["id_to_obj"][revoked_by_keys[count]]["external_references"][0]["external_id"])
-                    revocations_obj[key]["revoked_by_name"].append(new["id_to_obj"][revoked_by_keys[count]]["name"])
-                    count = count + 1
+                    revocations_obj[key]["revoked_by_id"].append(new["id_to_obj"][revoked_by_keys[count_rev]]["external_references"][0]["external_id"])
+                    revocations_obj[key]["revoked_by_name"].append(new["id_to_obj"][revoked_by_keys[count_rev]]["name"])
+                    count_rev = count_rev + 1
                     diff_key_info[key] = {}
                     diff_key_info[key]["name"] = revocations_obj[key]["name"]
                     diff_key_info[key]["attack_id"] = revocations_obj[key]["attack_id"]
-                    		
+                    	
+                ### This Section collects detailed information about the deletion changes	
                 for key in deletions:
 
                 	deletions_obj[key] = {}
@@ -731,53 +691,55 @@ class DiffStix(object):
 
                 logger.debug(f"Loaded:  [{domain:17}]/{obj_type}")
                 pbar.update(1)
-        
-        for key in diff_key:
-            f2.write("<hr>")
-            f2.write("<h1>")
-            try:
-            	f2.write(diff_key_info[key]["attack_id"])
-            	f2.write(" - ")
-            	f2.write(diff_key_info[key]["name"])
-            except:
-            	f2.write(diff_key_info[key]["attack_id"][0])
-            	f2.write(" - ")
-            	f2.write(diff_key_info[key]["name"][0])
-            f2.write("</h1>")
-            if key in versions:
-                f2.write("<h2>Version Changes</h2>")
-                f2.write(versions[key]["delta"])
-            if key in descriptions:
-                f2.write("<h2>Description Changes</h2>")
-                f2.write(descriptions[key]["delta"])
-            if key in additions_obj:
-                for i in range(len(additions_obj[key]["obj_type"])):
-                    f2.write("<font color=""green"">")
-                    f2.write("<h2>New Object of type ")
-                    f2.write(additions_obj[key]["obj_type"][i]) 
-                    f2.write("</h2></font>")
-            if key in revocations_obj:
-                for i in range(len(revocations_obj[key]["obj_type"])):
-                    f2.write("<font color=""blue"">")
-                    f2.write("<h2>Revoked Object of type ")
-                    f2.write(revocations_obj[key]["obj_type"][i]) 
-                    f2.write("<br>Revoked by ")
-                    f2.write(revocations_obj[key]["revoked_by_id"][i])
+                
+        ### This Section puts together all the changes and outputs it in an HTML file
+        if output_file:
+            for key in diff_key:
+                f2.write("<hr>")
+                f2.write("<h1>")
+                try:
+                    f2.write(diff_key_info[key]["attack_id"])
                     f2.write(" - ")
-                    f2.write(revocations_obj[key]["revoked_by_name"][i])
-                    f2.write("</h2></font>")
-            if key in deprecations_obj:
-                for i in range(len(deprecations_obj[key]["obj_type"])):
-                    f2.write("<font color=""purple"">")
-                    f2.write("<h2>Deprecated Object of type ")
-                    f2.write(deprecations_obj[key]["obj_type"][i])
-                    f2.write("</h2></font>") 
-            if key in deletions_obj:
-                for i in range(len(deletions_obj[key]["obj_type"])):
-                    f2.write("<font color=""red"">")
-                    f2.write("<h2>Deleted Object of type ")
-                    f2.write(deletions_obj[key]["obj_type"][i])
-                    f2.write("</h2></font>")     						                    		
+                    f2.write(diff_key_info[key]["name"])
+                except:
+                    f2.write(diff_key_info[key]["attack_id"][0])
+                    f2.write(" - ")
+                    f2.write(diff_key_info[key]["name"][0])
+                f2.write("</h1>")
+                if key in versions:
+                    f2.write("<h2>Version Changes</h2>")
+                    f2.write(versions[key]["delta"])
+                if key in descriptions:
+                    f2.write("<h2>Description Changes</h2>")
+                    f2.write(descriptions[key]["delta"])
+                if key in additions_obj:
+                    for i in range(len(additions_obj[key]["obj_type"])):
+                        f2.write("<font color=""green"">")
+                        f2.write("<h2>New Object of type ")
+                        f2.write(additions_obj[key]["obj_type"][i]) 
+                        f2.write("</h2></font>")
+                if key in revocations_obj:
+                    for i in range(len(revocations_obj[key]["obj_type"])):
+                        f2.write("<font color=""blue"">")
+                        f2.write("<h2>Revoked Object of type ")
+                        f2.write(revocations_obj[key]["obj_type"][i]) 
+                        f2.write("<br>Revoked by ")
+                        f2.write(revocations_obj[key]["revoked_by_id"][i])
+                        f2.write(" - ")
+                        f2.write(revocations_obj[key]["revoked_by_name"][i])
+                        f2.write("</h2></font>")
+                if key in deprecations_obj:
+                    for i in range(len(deprecations_obj[key]["obj_type"])):
+                        f2.write("<font color=""purple"">")
+                        f2.write("<h2>Deprecated Object of type ")
+                        f2.write(deprecations_obj[key]["obj_type"][i])
+                        f2.write("</h2></font>") 
+                if key in deletions_obj:
+                    for i in range(len(deletions_obj[key]["obj_type"])):
+                        f2.write("<font color=""red"">")
+                        f2.write("<h2>Deleted Object of type ")
+                        f2.write(deletions_obj[key]["obj_type"][i])
+                        f2.write("</h2></font>")     						                    		
         pbar.close()
 
     def get_md_key(self):
@@ -1464,6 +1426,12 @@ def get_parsed_args():
         action="store_true",
         help="show new contributors between releases",
     )
+    
+    parser.add_argument(
+        "--output_file",
+        action="store_true",
+        help="Get detailed information about what changed between versions",
+    )
 
     args = parser.parse_args()
 
@@ -1586,7 +1554,33 @@ def get_new_changelog_md(
 
 
 def main():
+    global output_file
     args = get_parsed_args()
+    ### This Section will format the HTML page to display the detailed changes
+    if args.output_file:
+    	output_file = True
+    	f2.write("<table class=""diff"" summary=""Legends"">")
+    	f2.write("<tr> <td> <table border="" summary=""Colors"">")
+    	f2.write("<tr><th> Colors </th> </tr>")
+    	f2.write("<tr><td class=""diff_add"">&nbsp;Added&nbsp;</td></tr>")
+    	f2.write("<tr><td class=""diff_chg"">Changed</td> </tr>")
+    	f2.write("<tr><td class=""diff_sub"">Deleted</td> </tr>")
+    	f2.write("</table></td>")
+    	f2.write("<td> <table border="" summary=""Links"">")
+    	f2.write("<tr><th colspan=""2""> Links </th> </tr>")
+    	f2.write("<tr><td>(f)irst change</td> </tr>")
+    	f2.write("<tr><td>(n)ext change</td> </tr>")
+    	f2.write("<tr><td>(t)op</td> </tr>")
+    	f2.write("</table></td> </tr>")
+    	f2.write("</table></td><br>")
+    	f2.write("<td> <table style=""float: left"" border="">")
+    	f2.write("<tr><th style=font-size:15px""><TT> Colors </th> <th style=font-size:15px> <TT> Objects </th></tr>")
+    	f2.write("<tr> <td style=""background-color:green;""></td> <td style=font-size:15px><TT> New Objects</td></tr>")
+    	f2.write("<tr> <td style=""background-color:blue;""></td> <td style=font-size:15px><TT> Revoked Objects</td></tr>")
+    	f2.write("<tr><td style=""background-color:purple;""></td><td style=font-size:15px><TT> Deprecated Objects</td>  </tr>")
+    	f2.write("<tr><td style=""background-color:red;""></td> <td style=font-size:15px><TT> Deleted Objects</td> </tr>")
+    	f2.write("</table></td> </tr>")
+    	f2.write("</table>")
 
     get_new_changelog_md(
         domains=args.domains,
