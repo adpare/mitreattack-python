@@ -1,23 +1,23 @@
 import argparse
-from ast import keyword
 import datetime
+import difflib
 import json
 import os
+from ast import keyword
 from itertools import chain
+from os.path import exists
 from pathlib import Path
 from typing import List
 
-import difflib
 import markdown
 import requests
 import urllib3
 from dateutil import parser as dateparser
 from loguru import logger
+from nltk.tokenize import word_tokenize
 from stix2 import Filter, MemoryStore, TAXIICollectionSource
 from taxii2client.v20 import Collection
-from nltk.tokenize import word_tokenize
 from tqdm import tqdm
-from os.path import exists
 
 legend_exists = False
 output_file = False
