@@ -30,19 +30,29 @@ revocations_obj = dict()
 deletions_obj = dict()
 diff_key = set()
 diff_key_info = {}
-obj_types = ["attack-pattern", "course-of-action", "intrusion-set", "malware", "tool", "x-mitre-data-component", "x-mitre-data-source", "x-mitre-matrix", "x-mitre-tactic"]
+obj_types = [
+    "attack-pattern",
+    "course-of-action",
+    "intrusion-set",
+    "malware",
+    "tool",
+    "x-mitre-data-component",
+    "x-mitre-data-source",
+    "x-mitre-matrix",
+    "x-mitre-tactic",
+]
 revoked_by_keys = []
 
 if exists("output1.html"):
-	open("output1.html","w").close()
-f2 = open("output1.html","w")
+    open("output1.html", "w").close()
+f2 = open("output1.html", "w")
 
 # helper maps
 domainToDomainLabel = {"enterprise-attack": "Enterprise", "mobile-attack": "Mobile", "ics-attack": "ICS"}
 domainToTaxiiCollectionId = {
     "enterprise-attack": "95ecc380-afe9-11e4-9b6c-751b66dd541e",
     "mobile-attack": "2f669986-b40b-4423-b720-4396ca6a462b",
-    "ics-attack": "02c3ef24-9cd4-48f3-a99f-b74ce24f1d34"
+    "ics-attack": "02c3ef24-9cd4-48f3-a99f-b74ce24f1d34",
 }
 # stix filters for querying for each type of data
 attackTypeToStixFilter = {
@@ -114,6 +124,7 @@ layer_defaults = [
 ]
 md_default = os.path.join("output", f"updates-{this_month.lower()}.md")
 json_default = os.path.join("output", f"updates-{this_month.lower()}.json")
+
 
 class DiffStix(object):
     """Utilities for detecting and summarizing differences between two versions of the ATT&CK content."""
@@ -210,26 +221,18 @@ class DiffStix(object):
 
         logger.info("removing duplicate relationships")
         self.new_subtechnique_of_rels = [
-            i
-            for n, i in enumerate(self.new_subtechnique_of_rels)
-            if i not in self.new_subtechnique_of_rels[n + 1 :]
+            i for n, i in enumerate(self.new_subtechnique_of_rels) if i not in self.new_subtechnique_of_rels[n + 1 :]
         ]
         self.old_subtechnique_of_rels = [
-            i
-            for n, i in enumerate(self.old_subtechnique_of_rels)
-            if i not in self.old_subtechnique_of_rels[n + 1 :]
+            i for n, i in enumerate(self.old_subtechnique_of_rels) if i not in self.old_subtechnique_of_rels[n + 1 :]
         ]
 
         logger.info("removing duplicate data components")
         self.new_datacomponents = [
-            i
-            for n, i in enumerate(self.new_datacomponents)
-            if i not in self.new_datacomponents[n + 1 :]
+            i for n, i in enumerate(self.new_datacomponents) if i not in self.new_datacomponents[n + 1 :]
         ]
         self.old_datacomponents = [
-            i
-            for n, i in enumerate(self.old_datacomponents)
-            if i not in self.old_datacomponents[n + 1 :]
+            i for n, i in enumerate(self.old_datacomponents) if i not in self.old_datacomponents[n + 1 :]
         ]
 
     def getUrlFromStix(self, datum, is_subtechnique=False):
@@ -280,12 +283,7 @@ class DiffStix(object):
 
                 def load_datastore(data_store):
                     """Handle data loaded from either a directory or the TAXII server"""
-                    raw_data = list(
-                        chain.from_iterable(
-                            data_store.query(f)
-                            for f in attackTypeToStixFilter[obj_type]
-                        )
-                    )
+                    raw_data = list(chain.from_iterable(data_store.query(f) for f in attackTypeToStixFilter[obj_type]))
                     raw_data = self.deep_copy_stix(raw_data)
                     id_to_obj = {item["id"]: item for item in raw_data}
 
@@ -298,9 +296,7 @@ class DiffStix(object):
                 def parse_subtechniques(data_store, new=False):
                     """Parse dataStore sub-technique-of relationships"""
                     if new:
-                        for technique in list(
-                            data_store.query(attackTypeToStixFilter["technique"])
-                        ):
+                        for technique in list(data_store.query(attackTypeToStixFilter["technique"])):
                             self.new_id_to_technique[technique["id"]] = technique
                         self.new_subtechnique_of_rels += list(
                             data_store.query(
@@ -311,9 +307,7 @@ class DiffStix(object):
                             )
                         )
                     else:
-                        for technique in list(
-                            data_store.query(attackTypeToStixFilter["technique"])
-                        ):
+                        for technique in list(data_store.query(attackTypeToStixFilter["technique"])):
                             self.old_id_to_technique[technique["id"]] = technique
                         self.old_subtechnique_of_rels += list(
                             data_store.query(
@@ -327,48 +321,32 @@ class DiffStix(object):
                 def parse_datacomponents(data_store, new=False):
                     """Parse dataStore x-mitre-data-components"""
                     if new:
-                        for datasource in list(
-                            data_store.query(attackTypeToStixFilter["datasource-only"])
-                        ):
+                        for datasource in list(data_store.query(attackTypeToStixFilter["datasource-only"])):
                             self.new_id_to_datasource[datasource["id"]] = datasource
                         self.new_datacomponents += list(
-                            data_store.query(
-                                [Filter("type", "=", "x-mitre-data-component")]
-                            )
+                            data_store.query([Filter("type", "=", "x-mitre-data-component")])
                         )
                     else:
-                        for datasource in list(
-                            data_store.query(attackTypeToStixFilter["datasource-only"])
-                        ):
+                        for datasource in list(data_store.query(attackTypeToStixFilter["datasource-only"])):
                             self.old_id_to_datasource[datasource["id"]] = datasource
                         self.old_datacomponents += list(
-                            data_store.query(
-                                [Filter("type", "=", "x-mitre-data-component")]
-                            )
+                            data_store.query([Filter("type", "=", "x-mitre-data-component")])
                         )
 
                 def update_contributors(old_object, new_object):
                     """Update contributors list if new object has contributors"""
                     if new_object.get("x_mitre_contributors"):
-                        new_object_contributors = set(
-                            new_object["x_mitre_contributors"]
-                        )
+                        new_object_contributors = set(new_object["x_mitre_contributors"])
 
                         # Check if old objects had contributors
-                        if old_object is None or not old_object.get(
-                            "x_mitre_contributors"
-                        ):
+                        if old_object is None or not old_object.get("x_mitre_contributors"):
                             old_object_contributors = set()
                         else:
-                            old_object_contributors = set(
-                                old_object["x_mitre_contributors"]
-                            )
+                            old_object_contributors = set(old_object["x_mitre_contributors"])
 
                         # Remove old contributors from showing up
                         # if contributors are the same the result will be empty
-                        new_contributors = (
-                            new_object_contributors - old_object_contributors
-                        )
+                        new_contributors = new_object_contributors - old_object_contributors
 
                         # Update counter of contributor to track contributions
                         for new_contributor in new_contributors:
@@ -389,8 +367,7 @@ class DiffStix(object):
                 def load_taxii(new=False):
                     """Load data from TAXII server according to domain"""
                     collection = Collection(
-                        "https://cti-taxii.mitre.org/stix/collections/"
-                        + domainToTaxiiCollectionId[domain]
+                        "https://cti-taxii.mitre.org/stix/collections/" + domainToTaxiiCollectionId[domain]
                     )
                     data_store = TAXIICollectionSource(collection)
                     parse_subtechniques(data_store, new)
@@ -437,15 +414,9 @@ class DiffStix(object):
                 for key in intersection:
 
                     # find revoked objects in the new bundle
-                    if (
-                        "revoked" in new["id_to_obj"][key]
-                        and new["id_to_obj"][key]["revoked"]
-                    ):
+                    if "revoked" in new["id_to_obj"][key] and new["id_to_obj"][key]["revoked"]:
                         # only work with newly revoked objects
-                        if (
-                            not "revoked" in old["id_to_obj"][key]
-                            or not old["id_to_obj"][key]["revoked"]
-                        ):
+                        if not "revoked" in old["id_to_obj"][key] or not old["id_to_obj"][key]["revoked"]:
                             # store the revoking object
                             revoked_by_key = new["data_store"].query(
                                 [
@@ -455,30 +426,25 @@ class DiffStix(object):
                                 ]
                             )
                             if len(revoked_by_key) == 0:
-                                logger.error(
-                                    f"[{key}] revoked object has no revoked-by relationship"
-                                )
+                                logger.error(f"[{key}] revoked object has no revoked-by relationship")
                                 continue
                             else:
                                 revoked_by_key = revoked_by_key[0]["target_ref"]
 
                             if revoked_by_key not in new["id_to_obj"]:
-                                logger.error(f"{key} revoked by {revoked_by_key}, but {revoked_by_key} not found in new STIX bundle!!")
+                                logger.error(
+                                    f"{key} revoked by {revoked_by_key}, but {revoked_by_key} not found in new STIX bundle!!"
+                                )
                                 continue
 
-                            new["id_to_obj"][key]["revoked_by"] = new["id_to_obj"][
-                                revoked_by_key
-                            ]
-			 
+                            new["id_to_obj"][key]["revoked_by"] = new["id_to_obj"][revoked_by_key]
+
                             revocations.add(key)
                             revoked_by_keys.append(revoked_by_key)
                         # else it was already revoked, and not a change; do nothing with it
 
                     # find deprecated objects
-                    elif (
-                        "x_mitre_deprecated" in new["id_to_obj"][key]
-                        and new["id_to_obj"][key]["x_mitre_deprecated"]
-                    ):
+                    elif "x_mitre_deprecated" in new["id_to_obj"][key] and new["id_to_obj"][key]["x_mitre_deprecated"]:
                         # if previously deprecated, not a change
                         if not "x_mitre_deprecated" in old["id_to_obj"][key]:
                             deprecations.add(key)
@@ -488,27 +454,17 @@ class DiffStix(object):
                         # try getting version numbers; should only lack version numbers if something has gone
                         # horribly wrong or a revoked object has slipped through
                         try:
-                            old_version = float(
-                                old["id_to_obj"][key]["x_mitre_version"]
-                            )
+                            old_version = float(old["id_to_obj"][key]["x_mitre_version"])
                         except ValueError:
-                            logger.error(
-                                f"ERROR: cannot get old version for object: {key}"
-                            )
+                            logger.error(f"ERROR: cannot get old version for object: {key}")
 
                         try:
-                            new_version = float(
-                                new["id_to_obj"][key]["x_mitre_version"]
-                            )
+                            new_version = float(new["id_to_obj"][key]["x_mitre_version"])
                         except ValueError:
-                            logger.error(
-                                f"ERROR: cannot get new version for object: {key}"
-                            )
+                            logger.error(f"ERROR: cannot get new version for object: {key}")
 
                         # Verify if there are new contributors on the object
-                        update_contributors(
-                            old["id_to_obj"][key], new["id_to_obj"][key]
-                        )
+                        update_contributors(old["id_to_obj"][key], new["id_to_obj"][key])
 
                         # check for changes
                         if new_version > old_version:
@@ -519,47 +475,50 @@ class DiffStix(object):
                             diff_key_info["key"] = key
                             old_version_temp = old["id_to_obj"][key]["x_mitre_version"]
                             new_version_temp = new["id_to_obj"][key]["x_mitre_version"]
-                            html_diff_version = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
+                            html_diff_version = difflib.HtmlDiff(wrapcolumn=60, tabsize=8)
                             html_diff_version._legend = ""
-                            delta = html_diff_version.make_file(old_version_temp.splitlines(), new_version_temp.splitlines(), "Old Version Number", "New Version Number")
+                            delta = html_diff_version.make_file(
+                                old_version_temp.splitlines(),
+                                new_version_temp.splitlines(),
+                                "Old Version Number",
+                                "New Version Number",
+                            )
 
                             try:
-                            	versions[key] = {}
-                            	versions[key]["name"] = new["id_to_obj"][key]["name"]
-                            	versions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0]["external_id"]
-                            	diff_key_info[key] = {}
-                            	diff_key_info[key]["name"] = versions[key]["name"]
-                            	diff_key_info[key]["attack_id"] = versions[key]["attack_id"]
+                                versions[key] = {}
+                                versions[key]["name"] = new["id_to_obj"][key]["name"]
+                                versions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0][
+                                    "external_id"
+                                ]
+                                diff_key_info[key] = {}
+                                diff_key_info[key]["name"] = versions[key]["name"]
+                                diff_key_info[key]["attack_id"] = versions[key]["attack_id"]
                             except:
-                            	temp_bool = True
+                                temp_bool = True
                             versions[key]["delta"] = delta
-                            #f2.write(delta)
+                            # f2.write(delta)
                         else:
                             # check for minor change; modification date increased but not version
-                            old_date = dateparser.parse(
-                                old["id_to_obj"][key]["modified"]
-                            )
-                            new_date = dateparser.parse(
-                                new["id_to_obj"][key]["modified"]
-                            )
+                            old_date = dateparser.parse(old["id_to_obj"][key]["modified"])
+                            new_date = dateparser.parse(new["id_to_obj"][key]["modified"])
                             if new_date > old_date:
                                 minor_changes.add(key)
                             else:
                                 unchanged.add(key)
-                        ### This Section collects detailed information about the description changes       
+                        ### This Section collects detailed information about the description changes
                         old_des = old["id_to_obj"][key]["description"]
-                        old_des = old_des.replace('\n',' ')
+                        old_des = old_des.replace("\n", " ")
                         old_lines = old_des.splitlines()
                         new_des = new["id_to_obj"][key]["description"]
-                        new_des = new_des.replace('\n',' ')
+                        new_des = new_des.replace("\n", " ")
                         new_lines = new_des.splitlines()
                         df = [x for x in old_lines if x not in new_lines]
                         df1 = [x for x in new_lines if x not in old_lines]
-                            
+
                         if df != [] or df1 != []:
                             minor_changes.add(key)
-                        
-                            html_diff = difflib.HtmlDiff(wrapcolumn=60,tabsize=8)
+
+                            html_diff = difflib.HtmlDiff(wrapcolumn=60, tabsize=8)
                             global legend_exists
                             if legend_exists:
                                 html_diff._legend = """
@@ -570,7 +529,9 @@ class DiffStix(object):
                             delta = html_diff.make_file(old_lines, new_lines, "Old Description", "New Description")
                             try:
                                 descriptions[key] = {}
-                                descriptions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0]["external_id"]
+                                descriptions[key]["attack_id"] = old["id_to_obj"][key]["external_references"][0][
+                                    "external_id"
+                                ]
                                 descriptions[key]["name"] = new["id_to_obj"][key]["name"]
                                 diff_key.add(key)
                                 diff_key_info[key] = {}
@@ -583,78 +544,88 @@ class DiffStix(object):
                 # Add contributions from additions
                 ### This Section collects detailed information about the addition changes
                 for key in additions:
-                    additions_obj[key] = {} 
-                    additions_obj[key]["attack_id"] = [] 
+                    additions_obj[key] = {}
+                    additions_obj[key]["attack_id"] = []
                     additions_obj[key]["name"] = []
                     additions_obj[key]["obj_type"] = []
                 for key in additions:
                     update_contributors(None, new["id_to_obj"][key])
                     key_string = key.split("--")
                     diff_key.add(key)
-                    additions_obj[key]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
+                    additions_obj[key]["attack_id"].append(
+                        new["id_to_obj"][key]["external_references"][0]["external_id"]
+                    )
                     additions_obj[key]["name"].append(new["id_to_obj"][key]["name"])
                     additions_obj[key]["obj_type"].append(key_string[0])
                     diff_key_info[key] = {}
                     diff_key_info[key]["name"] = additions_obj[key]["name"]
                     diff_key_info[key]["attack_id"] = additions_obj[key]["attack_id"]
-                    	
-                ### This Section collects detailed information about the deprecation changes   		
+
+                ### This Section collects detailed information about the deprecation changes
                 for key in deprecations:
-                	deprecations_obj[key] = {}
-                	deprecations_obj[key]["attack_id"] = []
-                	deprecations_obj[key]["name"] = []
-                	deprecations_obj[key]["obj_type"] = []
-                	
+                    deprecations_obj[key] = {}
+                    deprecations_obj[key]["attack_id"] = []
+                    deprecations_obj[key]["name"] = []
+                    deprecations_obj[key]["obj_type"] = []
+
                 for key in deprecations:
                     diff_key.add(key)
                     key_string = key.split("--")
-                    deprecations_obj[key]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
-                    deprecations_obj[key]["name"].append(new["id_to_obj"][key]["name"]) 
+                    deprecations_obj[key]["attack_id"].append(
+                        new["id_to_obj"][key]["external_references"][0]["external_id"]
+                    )
+                    deprecations_obj[key]["name"].append(new["id_to_obj"][key]["name"])
                     deprecations_obj[key]["obj_type"].append(key_string[0])
                     diff_key_info[key] = {}
                     diff_key_info[key]["name"] = deprecations_obj[key]["name"]
-                    diff_key_info[key]["attack_id"] = deprecations_obj[key]["attack_id"]  
-                    		
-                ### This Section collects detailed information about the revocation changes   		
+                    diff_key_info[key]["attack_id"] = deprecations_obj[key]["attack_id"]
+
+                ### This Section collects detailed information about the revocation changes
                 for key in revocations:
-                	revocations_obj[key] = {}
-                	revocations_obj[key]["attack_id"] = []
-                	revocations_obj[key]["name"] = []
-                	revocations_obj[key]["obj_type"] = []
-                	revocations_obj[key]["revoked_by_id"] = []
-                	revocations_obj[key]["revoked_by_name"] = []
+                    revocations_obj[key] = {}
+                    revocations_obj[key]["attack_id"] = []
+                    revocations_obj[key]["name"] = []
+                    revocations_obj[key]["obj_type"] = []
+                    revocations_obj[key]["revoked_by_id"] = []
+                    revocations_obj[key]["revoked_by_name"] = []
                 global count_rev
                 for key in revocations:
                     diff_key.add(key)
                     key_string = key.split("--")
-                    revocations_obj[key]["attack_id"].append(new["id_to_obj"][key]["external_references"][0]["external_id"])
-                    revocations_obj[key]["name"].append(new["id_to_obj"][key]["name"]) 
+                    revocations_obj[key]["attack_id"].append(
+                        new["id_to_obj"][key]["external_references"][0]["external_id"]
+                    )
+                    revocations_obj[key]["name"].append(new["id_to_obj"][key]["name"])
                     revocations_obj[key]["obj_type"].append(key_string[0])
-                    revocations_obj[key]["revoked_by_id"].append(new["id_to_obj"][revoked_by_keys[count_rev]]["external_references"][0]["external_id"])
+                    revocations_obj[key]["revoked_by_id"].append(
+                        new["id_to_obj"][revoked_by_keys[count_rev]]["external_references"][0]["external_id"]
+                    )
                     revocations_obj[key]["revoked_by_name"].append(new["id_to_obj"][revoked_by_keys[count_rev]]["name"])
                     count_rev = count_rev + 1
                     diff_key_info[key] = {}
                     diff_key_info[key]["name"] = revocations_obj[key]["name"]
                     diff_key_info[key]["attack_id"] = revocations_obj[key]["attack_id"]
-                    	
-                ### This Section collects detailed information about the deletion changes	
+
+                ### This Section collects detailed information about the deletion changes
                 for key in deletions:
 
-                	deletions_obj[key] = {}
-                	deletions_obj[key]["attack_id"] = []
-                	deletions_obj[key]["name"] = []
-                	deletions_obj[key]["obj_type"] = []
-                	
+                    deletions_obj[key] = {}
+                    deletions_obj[key]["attack_id"] = []
+                    deletions_obj[key]["name"] = []
+                    deletions_obj[key]["obj_type"] = []
+
                 for key in deletions:
                     diff_key.add(key)
                     key_string = key.split("--")
-                    deletions_obj[key]["attack_id"].append(old["id_to_obj"][key]["external_references"][0]["external_id"])
-                    deletions_obj[key]["name"].append(old["id_to_obj"][key]["name"]) 
+                    deletions_obj[key]["attack_id"].append(
+                        old["id_to_obj"][key]["external_references"][0]["external_id"]
+                    )
+                    deletions_obj[key]["name"].append(old["id_to_obj"][key]["name"])
                     deletions_obj[key]["obj_type"].append(key_string[0])
                     diff_key_info[key] = {}
                     diff_key_info[key]["name"] = deletions_obj[key]["name"]
-                    diff_key_info[key]["attack_id"] = deletions_obj[key]["attack_id"] 
-                    diff_key.add(key)                  		                    		              	                    	                    	                    	
+                    diff_key_info[key]["attack_id"] = deletions_obj[key]["attack_id"]
+                    diff_key.add(key)
                 # set data
                 if obj_type not in self.data:
                     self.data[obj_type] = {}
@@ -664,34 +635,22 @@ class DiffStix(object):
                 }
                 # only create minor_changes data if we want to display it later
                 if self.minor_changes:
-                    self.data[obj_type][domain]["minor_changes"] = [
-                        new["id_to_obj"][key] for key in minor_changes
-                    ]
+                    self.data[obj_type][domain]["minor_changes"] = [new["id_to_obj"][key] for key in minor_changes]
 
                 # ditto for unchanged
                 if self.unchanged:
-                    self.data[obj_type][domain]["unchanged"] = [
-                        new["id_to_obj"][key] for key in unchanged
-                    ]
+                    self.data[obj_type][domain]["unchanged"] = [new["id_to_obj"][key] for key in unchanged]
 
-                self.data[obj_type][domain]["revocations"] = [
-                    new["id_to_obj"][key] for key in revocations
-                ]
-                self.data[obj_type][domain]["deprecations"] = [
-                    new["id_to_obj"][key] for key in deprecations
-                ]
+                self.data[obj_type][domain]["revocations"] = [new["id_to_obj"][key] for key in revocations]
+                self.data[obj_type][domain]["deprecations"] = [new["id_to_obj"][key] for key in deprecations]
 
                 # only show deletions if objects were deleted
                 if len(deletions) > 0:
-                    self.data[obj_type][domain]["deletions"] = [
-                        old["id_to_obj"][key] for key in deletions
-                    ]
-                
-                
+                    self.data[obj_type][domain]["deletions"] = [old["id_to_obj"][key] for key in deletions]
 
                 logger.debug(f"Loaded:  [{domain:17}]/{obj_type}")
                 pbar.update(1)
-                
+
         ### This Section puts together all the changes and outputs it in an HTML file
         if output_file:
             for key in diff_key:
@@ -714,15 +673,15 @@ class DiffStix(object):
                     f2.write(descriptions[key]["delta"])
                 if key in additions_obj:
                     for i in range(len(additions_obj[key]["obj_type"])):
-                        f2.write("<font color=""green"">")
+                        f2.write("<font color=" "green" ">")
                         f2.write("<h2>New Object of type ")
-                        f2.write(additions_obj[key]["obj_type"][i]) 
+                        f2.write(additions_obj[key]["obj_type"][i])
                         f2.write("</h2></font>")
                 if key in revocations_obj:
                     for i in range(len(revocations_obj[key]["obj_type"])):
-                        f2.write("<font color=""blue"">")
+                        f2.write("<font color=" "blue" ">")
                         f2.write("<h2>Revoked Object of type ")
-                        f2.write(revocations_obj[key]["obj_type"][i]) 
+                        f2.write(revocations_obj[key]["obj_type"][i])
                         f2.write("<br>Revoked by ")
                         f2.write(revocations_obj[key]["revoked_by_id"][i])
                         f2.write(" - ")
@@ -730,16 +689,16 @@ class DiffStix(object):
                         f2.write("</h2></font>")
                 if key in deprecations_obj:
                     for i in range(len(deprecations_obj[key]["obj_type"])):
-                        f2.write("<font color=""purple"">")
+                        f2.write("<font color=" "purple" ">")
                         f2.write("<h2>Deprecated Object of type ")
                         f2.write(deprecations_obj[key]["obj_type"][i])
-                        f2.write("</h2></font>") 
+                        f2.write("</h2></font>")
                 if key in deletions_obj:
                     for i in range(len(deletions_obj[key]["obj_type"])):
-                        f2.write("<font color=""red"">")
+                        f2.write("<font color=" "red" ">")
                         f2.write("<h2>Deleted Object of type ")
                         f2.write(deletions_obj[key]["obj_type"][i])
-                        f2.write("</h2></font>")     						                    		
+                        f2.write("</h2></font>")
         pbar.close()
 
     def get_md_key(self):
@@ -764,9 +723,7 @@ class DiffStix(object):
             "* Object changes: " + statusDescriptions["changes"] + "\n"
         )
         if self.minor_changes:
-            key += (
-                "* Minor object changes: " + statusDescriptions["minor_changes"] + "\n"
-            )
+            key += "* Minor object changes: " + statusDescriptions["minor_changes"] + "\n"
         if self.unchanged:
             key += "* Unchanged objects: " + statusDescriptions["unchanged"] + "\n"
         key += (
@@ -820,49 +777,36 @@ class DiffStix(object):
             childless = list(
                 filter(
                     lambda item: not self.has_subtechniques(item, True)
-                    and not (
-                        "x_mitre_is_subtechnique" in item
-                        and item["x_mitre_is_subtechnique"]
-                    ),
+                    and not ("x_mitre_is_subtechnique" in item and item["x_mitre_is_subtechnique"]),
                     items,
                 )
             )
             parents = list(
                 filter(
                     lambda item: self.has_subtechniques(item, True)
-                    and not (
-                        "x_mitre_is_subtechnique" in item
-                        and item["x_mitre_is_subtechnique"]
-                    ),
+                    and not ("x_mitre_is_subtechnique" in item and item["x_mitre_is_subtechnique"]),
                     items,
                 )
             )
             children = {
                 item["id"]: item
                 for item in filter(
-                    lambda item: ("x_mitre_is_subtechnique") in item
-                    and (item["x_mitre_is_subtechnique"]),
+                    lambda item: ("x_mitre_is_subtechnique") in item and (item["x_mitre_is_subtechnique"]),
                     items,
                 )
             }
         else:
-            childless = (
-                []
-            )  # all data sources should have data components, i.e., should have children
+            childless = []  # all data sources should have data components, i.e., should have children
             parents = list(
                 filter(
-                    lambda item: not (
-                        "x_mitre_data_source_ref" in item
-                        and item["x_mitre_data_source_ref"]
-                    ),
+                    lambda item: not ("x_mitre_data_source_ref" in item and item["x_mitre_data_source_ref"]),
                     items,
                 )
             )
             children = {
                 item["id"]: item
                 for item in filter(
-                    lambda item: ("x_mitre_data_source_ref") in item
-                    and (item["x_mitre_data_source_ref"]),
+                    lambda item: ("x_mitre_data_source_ref") in item and (item["x_mitre_data_source_ref"]),
                     items,
                 )
             }
@@ -872,35 +816,23 @@ class DiffStix(object):
         for relationship in subtechnique_of_rels:
             if relationship["target_ref"] in parentToChildren:
                 if relationship["source_ref"] in children:
-                    parentToChildren[relationship["target_ref"]].append(
-                        children[relationship["source_ref"]]
-                    )
+                    parentToChildren[relationship["target_ref"]].append(children[relationship["source_ref"]])
             else:
                 if relationship["source_ref"] in children:
-                    parentToChildren[relationship["target_ref"]] = [
-                        children[relationship["source_ref"]]
-                    ]
+                    parentToChildren[relationship["target_ref"]] = [children[relationship["source_ref"]]]
 
         for datacomponent in datacomponents:
             if datacomponent["x_mitre_data_source_ref"] in parentToChildren:
                 if datacomponent["id"] in children:
-                    parentToChildren[datacomponent["x_mitre_data_source_ref"]].append(
-                        children[datacomponent["id"]]
-                    )
+                    parentToChildren[datacomponent["x_mitre_data_source_ref"]].append(children[datacomponent["id"]])
             else:
                 if datacomponent["id"] in children:
-                    parentToChildren[datacomponent["x_mitre_data_source_ref"]] = [
-                        children[datacomponent["id"]]
-                    ]
+                    parentToChildren[datacomponent["x_mitre_data_source_ref"]] = [children[datacomponent["id"]]]
 
         # now group parents and children
         groupings = []
         for parent in childless + parents:
-            parent_children = (
-                parentToChildren.pop(parent["id"])
-                if parent["id"] in parentToChildren
-                else []
-            )
+            parent_children = parentToChildren.pop(parent["id"]) if parent["id"] in parentToChildren else []
             groupings.append(
                 {
                     "parent": parent,
@@ -949,37 +881,22 @@ class DiffStix(object):
                 """Get a section list item for the given SDO according to section type"""
                 if section == "revocations":
                     revoker = item["revoked_by"]
-                    if (
-                        "x_mitre_is_subtechnique" in revoker
-                        and revoker["x_mitre_is_subtechnique"]
-                    ):
+                    if "x_mitre_is_subtechnique" in revoker and revoker["x_mitre_is_subtechnique"]:
                         # get revoking technique's parent for display
-                        parentID = list(
-                            filter(
-                                lambda rel: rel["source_ref"] == revoker["id"],
-                                subtechnique_of_rels,
-                            )
-                        )[0]["target_ref"]
+                        parentID = list(filter(lambda rel: rel["source_ref"] == revoker["id"], subtechnique_of_rels,))[
+                            0
+                        ]["target_ref"]
                         parentName = (
-                            id_to_technique[parentID]["name"]
-                            if parentID in id_to_technique
-                            else "ERROR NO PARENT"
+                            id_to_technique[parentID]["name"] if parentID in id_to_technique else "ERROR NO PARENT"
                         )
                         return f"{item['name']} (revoked by { parentName}: [{revoker['name']}]({self.site_prefix}/{self.getUrlFromStix(revoker, True)}))"
-                    elif (
-                        "x_mitre_data_source_ref" in revoker
-                        and revoker["x_mitre_data_source_ref"]
-                    ):
+                    elif "x_mitre_data_source_ref" in revoker and revoker["x_mitre_data_source_ref"]:
                         # get revoking technique's parent for display
-                        parentID = list(
-                            filter(
-                                lambda rel: rel["id"] == revoker["id"], datacomponents
-                            )
-                        )[0]["x_mitre_data_source_ref"]
+                        parentID = list(filter(lambda rel: rel["id"] == revoker["id"], datacomponents))[0][
+                            "x_mitre_data_source_ref"
+                        ]
                         parentName = (
-                            id_to_datasource[parentID]["name"]
-                            if parentID in id_to_datasource
-                            else "ERROR NO PARENT"
+                            id_to_datasource[parentID]["name"] if parentID in id_to_datasource else "ERROR NO PARENT"
                         )
                         return f"{item['name']} (revoked by { parentName}: [{revoker['name']}]({self.site_prefix}/{self.getDataComponentUrl(id_to_datasource[parentID], item)}))"
                     else:
@@ -1013,15 +930,11 @@ class DiffStix(object):
                 if grouping["parentInSection"]:
                     sectionString += f"* { placard(grouping['parent']) }\n"
 
-                for child in sorted(
-                    grouping["children"], key=lambda child: child["name"]
-                ):
+                for child in sorted(grouping["children"], key=lambda child: child["name"]):
                     if grouping["parentInSection"]:
                         sectionString += f"  * {placard(child) }\n"
                     else:
-                        sectionString += (
-                            f"* {grouping['parent']['name']}: { placard(child) }\n"
-                        )
+                        sectionString += f"* {grouping['parent']['name']}: { placard(child) }\n"
 
             logger.debug(f"finished getting section list for {obj_type}/{section}")
             # logger.debug(sectionString)
@@ -1030,9 +943,7 @@ class DiffStix(object):
         def getContributorSection():
             # Get contributors markdown
             contribSection = "### Contributors to this release\n\n"
-            sorted_contributors = sorted(
-                self.release_contributors, key=lambda v: v.lower()
-            )
+            sorted_contributors = sorted(self.release_contributors, key=lambda v: v.lower())
 
             for contributor in sorted_contributors:
                 if contributor == "ATT&CK":
@@ -1040,20 +951,17 @@ class DiffStix(object):
                 contribSection += f"* {contributor}\n"
 
             return contribSection
+
         logger.info("generating markdown string")
         content = ""
         for obj_type in self.data.keys():
             domains = ""
             for domain in self.data[obj_type]:
-                logger.debug(
-                    f"==== Generating markdown for domain: {domainToDomainLabel[domain]} --- {obj_type} ===="
-                )
+                logger.debug(f"==== Generating markdown for domain: {domainToDomainLabel[domain]} --- {obj_type} ====")
                 domains += f"#### {domainToDomainLabel[domain]}\n\n"  # e.g "Enterprise"
                 # Skip mobile sections for data sources
                 if domain == "mobile-attack" and obj_type == "datasource":
-                    logger.debug(
-                        f"Skipping - ATT&CK for Mobile does not support data sources"
-                    )
+                    logger.debug(f"Skipping - ATT&CK for Mobile does not support data sources")
                     domains += "ATT&CK for Mobile does not support data sources\n\n"
                     continue
                 domain_sections = ""
@@ -1061,9 +969,7 @@ class DiffStix(object):
                     logger.debug(f"{section}: {len(values)}")
 
                     if values:  # if there are items in the section
-                        section_items = getSectionList(
-                            items=values, obj_type=obj_type, section=section
-                        )
+                        section_items = getSectionList(items=values, obj_type=obj_type, section=section)
                     else:  # no items in section
                         section_items = "* No changes\n"
 
@@ -1071,13 +977,9 @@ class DiffStix(object):
 
                     if "{obj_type}" in header:
                         if section == "additions":
-                            header = header.replace(
-                                "{obj_type}", attackTypeToTitle[obj_type]
-                            )
+                            header = header.replace("{obj_type}", attackTypeToTitle[obj_type])
                         else:
-                            header = header.replace(
-                                "{obj_type}", attackTypeToSectionName[obj_type]
-                            )
+                            header = header.replace("{obj_type}", attackTypeToSectionName[obj_type])
 
                     # e.g "added techniques:"
                     domain_sections += f"{header}\n\n{section_items}\n"
@@ -1122,14 +1024,10 @@ class DiffStix(object):
                 for technique in self.data["technique"][domain][status]:
                     problem_detected = False
                     if "kill_chain_phases" not in technique:
-                        logger.error(
-                            f"{technique['id']}: technique missing a tactic!! {technique['name']}"
-                        )
+                        logger.error(f"{technique['id']}: technique missing a tactic!! {technique['name']}")
                         problem_detected = True
                     if "external_references" not in technique:
-                        logger.error(
-                            f"{technique['id']}: technique missing external references!! {technique['name']}"
-                        )
+                        logger.error(f"{technique['id']}: technique missing external references!! {technique['name']}")
                         problem_detected = True
 
                     if problem_detected:
@@ -1138,15 +1036,11 @@ class DiffStix(object):
                     for phase in technique["kill_chain_phases"]:
                         techniques.append(
                             {
-                                "techniqueID": technique["external_references"][0][
-                                    "external_id"
-                                ],
+                                "techniqueID": technique["external_references"][0]["external_id"],
                                 "tactic": phase["phase_name"],
                                 "enabled": True,
                                 "color": statusToColor[status],
-                                "comment": status[:-1]
-                                if status != "unchanged"
-                                else status,  # trim s off end of word
+                                "comment": status[:-1] if status != "unchanged" else status,  # trim s off end of word
                             }
                         )
                         used_statuses.add(status)
@@ -1211,9 +1105,7 @@ class DiffStix(object):
                 if grouping["parentInSection"]:
                     new_values.append(grouping["parent"])
 
-                for child in sorted(
-                    grouping["children"], key=lambda child: child["name"]
-                ):
+                for child in sorted(grouping["children"], key=lambda child: child["name"]):
                     new_values.append(child)
 
             return new_values
@@ -1224,16 +1116,12 @@ class DiffStix(object):
 
         for obj_type, domains in self.data.items():
             for domain, sections in domains.items():
-                logger.debug(
-                    f"===== Generating domain: {domainToDomainLabel[domain]} --- {obj_type} ====="
-                )
+                logger.debug(f"===== Generating domain: {domainToDomainLabel[domain]} --- {obj_type} =====")
                 changes_dict[domain][obj_type] = {}
 
                 for section, values in sections.items():
                     # new_values includes parents & children mixed (e.g. techniques/sub-techniques, data sources/components)
-                    new_values = cleanup_values(
-                        items=values, obj_type=obj_type, section=section
-                    )
+                    new_values = cleanup_values(items=values, obj_type=obj_type, section=section)
                     changes_dict[domain][obj_type][section] = new_values
 
         # always add contributors
@@ -1260,9 +1148,7 @@ def markdown_to_index_html(markdown_outfile, content):
     # Center content
     html_string = """<div style='max-width: 55em;margin: auto;margin-top:20px;font-family: "Roboto", sans-serif;'>"""
     html_string += "<meta charset='utf-8'>"
-    html_string += (
-        "<h1 style='text-align:center;'>Changes between ATT&CK STIX bundles</h1>"
-    )
+    html_string += "<h1 style='text-align:center;'>Changes between ATT&CK STIX bundles</h1>"
     html_string += markdown.markdown(content)
     html_string += "</div>"
 
@@ -1271,6 +1157,7 @@ def markdown_to_index_html(markdown_outfile, content):
     outfile.close()
 
     logger.info("finished writing HTML to file")
+
 
 def layers_dict_to_files(outfiles, layers):
     """Print the layers dict passed in to layer files."""
@@ -1426,7 +1313,7 @@ def get_parsed_args():
         action="store_true",
         help="show new contributors between releases",
     )
-    
+
     parser.add_argument(
         "--output_file",
         action="store_true",
@@ -1449,9 +1336,7 @@ def get_parsed_args():
         parser.error("--use-mitre-cti and -old cannot be used together")
 
     if not args.markdown and args.layers is None:
-        logger.error(
-            "Script doesn't output anything unless -markdown and/or -layers are specified."
-        )
+        logger.error("Script doesn't output anything unless -markdown and/or -layers are specified.")
         logger.error("Run 'python3 diff_stix.py -h' for usage instructions")
         exit()
 
@@ -1460,9 +1345,7 @@ def get_parsed_args():
 
     if args.layers is not None:
         if len(args.layers) not in [0, 3]:
-            parser.error(
-                "-layers requires exactly three files to be specified or none at all"
-            )
+            parser.error("-layers requires exactly three files to be specified or none at all")
 
     return args
 
@@ -1558,29 +1441,39 @@ def main():
     args = get_parsed_args()
     ### This Section will format the HTML page to display the detailed changes
     if args.output_file:
-    	output_file = True
-    	f2.write("<table class=""diff"" summary=""Legends"">")
-    	f2.write("<tr> <td> <table border="" summary=""Colors"">")
-    	f2.write("<tr><th> Colors </th> </tr>")
-    	f2.write("<tr><td class=""diff_add"">&nbsp;Added&nbsp;</td></tr>")
-    	f2.write("<tr><td class=""diff_chg"">Changed</td> </tr>")
-    	f2.write("<tr><td class=""diff_sub"">Deleted</td> </tr>")
-    	f2.write("</table></td>")
-    	f2.write("<td> <table border="" summary=""Links"">")
-    	f2.write("<tr><th colspan=""2""> Links </th> </tr>")
-    	f2.write("<tr><td>(f)irst change</td> </tr>")
-    	f2.write("<tr><td>(n)ext change</td> </tr>")
-    	f2.write("<tr><td>(t)op</td> </tr>")
-    	f2.write("</table></td> </tr>")
-    	f2.write("</table></td><br>")
-    	f2.write("<td> <table style=""float: left"" border="">")
-    	f2.write("<tr><th style=font-size:15px""><TT> Colors </th> <th style=font-size:15px> <TT> Objects </th></tr>")
-    	f2.write("<tr> <td style=""background-color:green;""></td> <td style=font-size:15px><TT> New Objects</td></tr>")
-    	f2.write("<tr> <td style=""background-color:blue;""></td> <td style=font-size:15px><TT> Revoked Objects</td></tr>")
-    	f2.write("<tr><td style=""background-color:purple;""></td><td style=font-size:15px><TT> Deprecated Objects</td>  </tr>")
-    	f2.write("<tr><td style=""background-color:red;""></td> <td style=font-size:15px><TT> Deleted Objects</td> </tr>")
-    	f2.write("</table></td> </tr>")
-    	f2.write("</table>")
+        output_file = True
+        f2.write("<table class=" "diff" " summary=" "Legends" ">")
+        f2.write("<tr> <td> <table border=" " summary=" "Colors" ">")
+        f2.write("<tr><th> Colors </th> </tr>")
+        f2.write("<tr><td class=" "diff_add" ">&nbsp;Added&nbsp;</td></tr>")
+        f2.write("<tr><td class=" "diff_chg" ">Changed</td> </tr>")
+        f2.write("<tr><td class=" "diff_sub" ">Deleted</td> </tr>")
+        f2.write("</table></td>")
+        f2.write("<td> <table border=" " summary=" "Links" ">")
+        f2.write("<tr><th colspan=" "2" "> Links </th> </tr>")
+        f2.write("<tr><td>(f)irst change</td> </tr>")
+        f2.write("<tr><td>(n)ext change</td> </tr>")
+        f2.write("<tr><td>(t)op</td> </tr>")
+        f2.write("</table></td> </tr>")
+        f2.write("</table></td><br>")
+        f2.write("<td> <table style=" "float: left" " border=" ">")
+        f2.write("<tr><th style=font-size:15px" "><TT> Colors </th> <th style=font-size:15px> <TT> Objects </th></tr>")
+        f2.write(
+            "<tr> <td style=" "background-color:green;" "></td> <td style=font-size:15px><TT> New Objects</td></tr>"
+        )
+        f2.write(
+            "<tr> <td style=" "background-color:blue;" "></td> <td style=font-size:15px><TT> Revoked Objects</td></tr>"
+        )
+        f2.write(
+            "<tr><td style="
+            "background-color:purple;"
+            "></td><td style=font-size:15px><TT> Deprecated Objects</td>  </tr>"
+        )
+        f2.write(
+            "<tr><td style=" "background-color:red;" "></td> <td style=font-size:15px><TT> Deleted Objects</td> </tr>"
+        )
+        f2.write("</table></td> </tr>")
+        f2.write("</table>")
 
     get_new_changelog_md(
         domains=args.domains,
